@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HeartSync — Find your spark</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A1625;
+    --ink-soft:#2A2438;
+    --coral:#FF5470;
+    --coral-deep:#E03A57;
+    --gold:#FFB800;
+    --mint:#2ECC71;
+    --cream:#FFF8F0;
+    --cream-dim:#F3ECE3;
+  }
+  *{ -webkit-tap-highlight-color: transparent; }
+  html,body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--ink);
+    overscroll-behavior:none;
+  }
+  .font-display{ font-family:'Outfit',system-ui,sans-serif; }
+
+  /* Phone shell on desktop */
+  #app-shell{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--cream);
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 0 80px rgba(0,0,0,0.5);
+  }
+  @media(min-width:431px){
+    body{ display:flex; align-items:center; justify-content:center; padding:24px 0; }
+    #app-shell{ min-height:90vh; max-height:900px; border-radius:32px; }
+  }
+
+  .screen{ display:none; }
+  .screen.active{ display:flex; flex-direction:column; }
+
+  /* ---------- Header ---------- */
+  .app-header{
+    background:var(--cream);
+    border-bottom:1px solid rgba(26,22,37,0.06);
+  }
+  .logo-mark{
+    background:linear-gradient(135deg,var(--coral),var(--coral-deep));
+    -webkit-mask-image: none;
+  }
+
+  /* ---------- Bottom Nav (floating pill) ---------- */
+  .bottom-nav{
+    position:absolute;
+    left:50%; transform:translateX(-50%);
+    bottom:16px;
+    width:calc(100% - 32px);
+    max-width:380px;
+    background:rgba(26,22,37,0.96);
+    backdrop-filter: blur(10px);
+    border-radius:24px;
+    box-shadow:0 12px 30px rgba(26,22,37,0.35);
+    z-index:40;
+  }
+  .nav-btn{
+    position:relative;
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), color .2s;
+    color:rgba(255,248,240,0.45);
+  }
+  .nav-btn.active-nav{ color:var(--cream); }
+  .nav-btn.active-nav .nav-pill{
+    opacity:1; transform:scale(1);
+  }
+  .nav-pill{
+    position:absolute; inset:-6px -2px;
+    background:linear-gradient(135deg,var(--coral),var(--coral-deep));
+    border-radius:16px;
+    opacity:0; transform:scale(.7);
+    transition:all .25s cubic-bezier(.34,1.56,.64,1);
+    z-index:-1;
+  }
+  .nav-btn:active{ transform:scale(.92); }
+
+  /* ---------- Card Deck ---------- */
+  #card-stack{
+    position:relative;
+    width:100%;
+    flex:1;
+    perspective:1000px;
+  }
+  .profile-card{
+    position:absolute;
+    inset:0;
+    border-radius:28px;
+    overflow:hidden;
+    box-shadow:0 20px 40px -10px rgba(26,22,37,0.35), 0 0 0 1px rgba(26,22,37,0.04);
+    background:var(--ink);
+    transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .35s ease;
+    will-change: transform;
+    touch-action:none;
+    user-select:none;
+  }
+  .profile-card img{
+    width:100%; height:100%; object-fit:cover;
+    pointer-events:none;
+  }
+  .card-gradient{
+    position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(10,8,15,0.92) 0%, rgba(10,8,15,0.55) 30%, rgba(10,8,15,0) 58%);
+  }
+  .card-stamp{
+    position:absolute;
+    top:36px;
+    font-family:'Outfit',sans-serif;
+    font-weight:800;
+    font-size:1.9rem;
+    letter-spacing:0.04em;
+    border:4px solid;
+    border-radius:14px;
+    padding:4px 14px;
+    text-transform:uppercase;
+    opacity:0;
+    transition:opacity .15s;
+  }
+  .stamp-like{ left:24px; color:var(--mint); border-color:var(--mint); transform:rotate(-18deg); }
+  .stamp-nope{ right:24px; color:var(--coral); border-color:var(--coral); transform:rotate(18deg); }
+
+  .swipe-btn{
+    transition: transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s;
+  }
+  .swipe-btn:active{ transform:scale(.85); }
+  .swipe-btn-like{ box-shadow:0 8px 22px -4px rgba(46,204,113,0.55); }
+  .swipe-btn-nope{ box-shadow:0 8px 22px -4px rgba(255,84,112,0.5); }
+  .swipe-btn-super{ box-shadow:0 6px 16px -4px rgba(255,184,0,0.5); }
+
+  /* ---------- Match Modal ---------- */
+  #match-modal{
+    position:absolute; inset:0; z-index:100;
+    display:none;
+    align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 30%, #3a1530 0%, #1A1625 70%);
+    overflow:hidden;
+  }
+  #match-modal.show{ display:flex; }
+  .match-photo{
+    width:128px; height:128px;
+    border-radius:50%;
+    border:4px solid var(--cream);
+    object-fit:cover;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .confetti{
+    position:absolute;
+    top:-10%;
+    border-radius:2px;
+    opacity:0.9;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform: translateY(120vh) rotate(540deg); opacity:0.3; }
+  }
+  .match-pop-in{ animation: popIn .55s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes popIn{
+    0%{ transform:scale(.4) rotate(-8deg); opacity:0; }
+    100%{ transform:scale(1) rotate(0); opacity:1; }
+  }
+  .match-pop-in.delay-1{ animation-delay:.12s; }
+
+  /* ---------- Chat bubbles ---------- */
+  .bubble-them{
+    background:var(--cream-dim);
+    color:var(--ink);
+    border-radius:18px 18px 18px 4px;
+  }
+  .bubble-me{
+    background:linear-gradient(135deg,var(--coral),var(--coral-deep));
+    color:white;
+    border-radius:18px 18px 4px 18px;
+  }
+  .typing-dot{
+    width:6px; height:6px; border-radius:50%;
+    background:#9b95a3;
+    animation: bounceDot 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2){ animation-delay:.15s; }
+  .typing-dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes bounceDot{
+    0%,60%,100%{ transform:translateY(0); opacity:.5; }
+    30%{ transform:translateY(-5px); opacity:1; }
+  }
+
+  ::-webkit-scrollbar{ width:0; height:0; }
+
+  .empty-illustration{
+    background:var(--cream-dim);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001s !important; transition-duration:.001s !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app-shell">
+
+  <!-- ============ HEADER ============ -->
+  <header class="app-header px-5 pt-5 pb-4 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="logo-mark w-9 h-9 rounded-xl flex items-center justify-center">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="white"><path d="M12 21s-7.5-4.6-10-9.3C0.3 8.2 1.7 4.5 5.2 3.4 7.7 2.6 10 3.7 12 6c2-2.3 4.3-3.4 6.8-2.6 3.5 1.1 4.9 4.8 3.2 8.3C19.5 16.4 12 21 12 21z"/></svg>
+      </div>
+      <span class="font-display font-extrabold text-xl tracking-tight" style="color:var(--ink)">HeartSync</span>
+    </div>
+    <button id="settings-btn" class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/5 active:scale-90 transition" style="color:var(--ink)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </header>
+
+  <!-- ============ DISCOVER SCREEN ============ -->
+  <main id="screen-discover" class="screen active flex-1 px-4 pt-3 pb-28 relative">
+    <div id="card-stack"></div>
+
+    <div id="empty-state" class="hidden flex-col items-center justify-center text-center h-full px-8 absolute inset-0">
+      <div class="empty-illustration w-24 h-24 rounded-full flex items-center justify-center mb-5">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1A1625" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+      </div>
+      <h3 class="font-display font-bold text-lg mb-1.5" style="color:var(--ink)">You're all caught up</h3>
+      <p class="text-sm text-gray-500 mb-5">No new profiles nearby right now. Check back soon, or widen your search.</p>
+      <button id="reset-deck-btn" class="font-display font-semibold text-sm px-5 py-2.5 rounded-full text-white" style="background:var(--coral)">Start over</button>
+    </div>
+
+    <!-- Action buttons -->
+    <div id="action-row" class="flex items-center justify-center gap-5 mt-4">
+      <button id="btn-nope" class="swipe-btn swipe-btn-nope w-16 h-16 rounded-full bg-white flex items-center justify-center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <button id="btn-super" class="swipe-btn swipe-btn-super w-12 h-12 rounded-full bg-white flex items-center justify-center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1"><path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14 2 9.5h7.5z"/></svg>
+      </button>
+      <button id="btn-like" class="swipe-btn swipe-btn-like w-16 h-16 rounded-full bg-white flex items-center justify-center">
+        <svg width="27" height="27" viewBox="0 0 24 24" fill="var(--mint)"><path d="M12 21s-7.5-4.6-10-9.3C0.3 8.2 1.7 4.5 5.2 3.4 7.7 2.6 10 3.7 12 6c2-2.3 4.3-3.4 6.8-2.6 3.5 1.1 4.9 4.8 3.2 8.3C19.5 16.4 12 21 12 21z"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- ============ MATCHES SCREEN ============ -->
+  <main id="screen-matches" class="screen flex-1 px-5 pt-4 pb-28 overflow-y-auto">
+    <h2 class="font-display font-extrabold text-2xl mb-1" style="color:var(--ink)">Your Matches</h2>
+    <p id="matches-subtitle" class="text-sm text-gray-500 mb-5">Say hi — they matched with you too.</p>
+    <div id="matches-grid" class="grid grid-cols-2 gap-3.5"></div>
+    <div id="matches-empty" class="hidden flex-col items-center text-center pt-16">
+      <div class="empty-illustration w-20 h-20 rounded-full flex items-center justify-center mb-4 mx-auto">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A1625" stroke-width="1.6"><path d="M12 21s-7.5-4.6-10-9.3C0.3 8.2 1.7 4.5 5.2 3.4 7.7 2.6 10 3.7 12 6c2-2.3 4.3-3.4 6.8-2.6 3.5 1.1 4.9 4.8 3.2 8.3C19.5 16.4 12 21 12 21z"/></svg>
+      </div>
+      <h3 class="font-display font-bold text-base mb-1" style="color:var(--ink)">No matches yet</h3>
+      <p class="text-sm text-gray-500">Keep swiping on Discover — your match list lights up here.</p>
+    </div>
+  </main>
+
+  <!-- ============ CHAT LIST SCREEN ============ -->
+  <main id="screen-chat-list" class="screen flex-1 px-5 pt-4 pb-28 overflow-y-auto">
+    <h2 class="font-display font-extrabold text-2xl mb-5" style="color:var(--ink)">Messages</h2>
+    <div id="chat-list"></div>
+    <div id="chat-list-empty" class="hidden flex-col items-center text-center pt-16">
+      <div class="empty-illustration w-20 h-20 rounded-full flex items-center justify-center mb-4 mx-auto">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1A1625" stroke-width="1.6"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </div>
+      <h3 class="font-display font-bold text-base mb-1" style="color:var(--ink)">No conversations yet</h3>
+      <p class="text-sm text-gray-500">Match with someone first, then start the conversation.</p>
+    </div>
+  </main>
+
+  <!-- ============ CHAT CONVERSATION SCREEN ============ -->
+  <main id="screen-chat-convo" class="screen flex-1 flex-col">
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-black/5 bg-white/60 sticky top-0 z-10">
+      <button id="chat-back-btn" class="w-8 h-8 flex items-center justify-center -ml-1 active:scale-90 transition" style="color:var(--ink)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <img id="convo-avatar" class="w-9 h-9 rounded-full object-cover" src="" alt="">
+      <div>
+        <p id="convo-name" class="font-display font-semibold text-sm leading-tight" style="color:var(--ink)"></p>
+        <p class="text-xs text-emerald-500 font-medium">Active now</p>
+      </div>
+    </div>
+    <div id="convo-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-3" style="background:var(--cream)"></div>
+    <div class="px-3 py-3 border-t border-black/5 bg-white flex items-center gap-2">
+      <input id="chat-input" type="text" placeholder="Type a message…" autocomplete="off"
+        class="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2"
+        style="color:var(--ink); --tw-ring-color: var(--coral);">
+      <button id="chat-send-btn" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition" style="background:var(--coral)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav class="bottom-nav flex items-center justify-around px-2 py-2.5">
+    <button class="nav-btn active-nav flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl" data-nav="discover">
+      <div class="nav-pill"></div>
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      <span class="text-[10.5px] font-semibold">Discover</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl relative" data-nav="matches">
+      <div class="nav-pill"></div>
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-10-9.3C0.3 8.2 1.7 4.5 5.2 3.4 7.7 2.6 10 3.7 12 6c2-2.3 4.3-3.4 6.8-2.6 3.5 1.1 4.9 4.8 3.2 8.3C19.5 16.4 12 21 12 21z"/></svg>
+      <span class="text-[10.5px] font-semibold">Matches</span>
+      <span id="matches-badge" class="hidden absolute top-0 right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center text-white" style="background:var(--gold)">0</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl relative" data-nav="chat-list">
+      <div class="nav-pill"></div>
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span class="text-[10.5px] font-semibold">Chat</span>
+      <span id="chat-badge" class="hidden absolute top-0 right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center text-white" style="background:var(--coral)">0</span>
+    </button>
+  </nav>
+
+  <!-- ============ MATCH MODAL ============ -->
+  <div id="match-modal">
+    <div id="confetti-layer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+    <div class="relative z-10 flex flex-col items-center px-8 text-center">
+      <p class="match-pop-in font-display text-sm font-bold tracking-[0.25em] uppercase mb-2" style="color:var(--gold)">You found a spark</p>
+      <h1 class="match-pop-in font-display font-extrabold text-4xl mb-7" style="color:var(--cream)">It's a Match!</h1>
+      <div class="flex items-center -space-x-6 mb-7">
+        <img id="match-photo-me" class="match-photo match-pop-in" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&h=300&fit=crop&q=80" alt="You">
+        <img id="match-photo-them" class="match-photo match-pop-in delay-1" src="" alt="">
+      </div>
+      <p id="match-text" class="text-sm mb-8 px-2" style="color:rgba(255,248,240,0.75)"></p>
+      <button id="start-convo-btn" class="font-display font-bold text-base px-9 py-3.5 rounded-full text-white mb-3 w-full max-w-[280px]" style="background:linear-gradient(135deg,var(--coral),var(--coral-deep)); box-shadow:0 10px 28px -6px rgba(255,84,112,0.55)">
+        Start Conversation
+      </button>
+      <button id="keep-swiping-btn" class="font-display font-semibold text-sm py-2" style="color:rgba(255,248,240,0.6)">Keep Swiping</button>
+    </div>
+  </div>
+
+</div>
+<script>
+(function(){
+  "use strict";
+
+  /* ============ MOCK DATA ============ */
+  const PROFILES = [
+    {
+      id: 1,
+      name: "Maya",
+      age: 26,
+      distance: "3 km away",
+      bio: "Travel blogger who's run out of suitcase space but not stories. Currently chasing sunsets in places I can't pronounce.",
+      img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&h=1100&fit=crop&q=80",
+      tags: ["Travel", "Photography", "Coffee"],
+      keywords: ["travel", "sunset", "suitcase", "places", "trip", "blogger"]
+    },
+    {
+      id: 2,
+      name: "Arjun",
+      age: 29,
+      distance: "5 km away",
+      bio: "Tech enthusiast building apps at 2am and pretending it's a personality trait. Will debate you on the best code editor.",
+      img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&h=1100&fit=crop&q=80",
+      tags: ["Tech", "Startups", "Gaming"],
+      keywords: ["code", "app", "tech", "startup", "editor", "build"]
+    },
+    {
+      id: 3,
+      name: "Priya",
+      age: 24,
+      distance: "2 km away",
+      bio: "Fitness lover, 5am gym sessions, questionable post-workout meal choices. Will absolutely beat you at arm wrestling.",
+      img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&h=1100&fit=crop&q=80",
+      tags: ["Fitness", "Nutrition", "Hiking"],
+      keywords: ["gym", "workout", "fitness", "arm wrestling", "5am", "hike"]
+    },
+    {
+      id: 4,
+      name: "Rohan",
+      age: 28,
+      distance: "7 km away",
+      bio: "Amateur chef, professional snack critic. I'll cook you dinner if you promise not to judge my plating skills.",
+      img: "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=800&h=1100&fit=crop&q=80",
+      tags: ["Cooking", "Foodie", "Movies"],
+      keywords: ["cook", "dinner", "snack", "chef", "plating", "food"]
+    },
+    {
+      id: 5,
+      name: "Ananya",
+      age: 25,
+      distance: "4 km away",
+      bio: "Bookworm with a Spotify playlist for every mood, including 'crying in the rain but make it aesthetic.'",
+      img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&h=1100&fit=crop&q=80",
+      tags: ["Reading", "Music", "Art"],
+      keywords: ["book", "playlist", "spotify", "music", "read", "mood"]
+    },
+    {
+      id: 6,
+      name: "Karan",
+      age: 30,
+      distance: "6 km away",
+      bio: "Weekend trekker, weekday spreadsheet wizard. Looking for someone to split a pizza and a mountain summit with.",
+      img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&h=1100&fit=crop&q=80",
+      tags: ["Trekking", "Excel", "Pizza"],
+      keywords: ["trek", "mountain", "pizza", "spreadsheet", "summit", "weekend"]
+    }
+  ];
+
+  const MY_PHOTO = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&h=300&fit=crop&q=80";
+
+  /* Reply pools keyed loosely to vibe — picked + personalized using profile keywords */
+  const OPENER_TEMPLATES = [
+    "Heyy! Okay I have to ask — {kw} is basically my whole personality too. Tell me more 👀",
+    "Hii! Your bio about {kw} got me at hello, ngl 😄",
+    "Wait you're into {kw}?? Same. We're basically already best friends.",
+    "Hey hey 👋 saw the {kw} mention and had to swipe right immediately."
+  ];
+
+  const REPLY_TEMPLATES = [
+    "haha for real, {kw} energy is unmatched 😂 what got you into it?",
+    "okay that's so funny, I was literally thinking about {kw} earlier today",
+    "lol I feel that. so when's the next {kw} adventure happening?",
+    "wait that's such a mood. tell me everything about the {kw} thing",
+    "honestly {kw} is a great icebreaker, 10/10 topic choice",
+    "haha I'm dying, that's so relatable. more {kw} stories pls 🙏",
+    "okay this conversation just got 10x better. love that for us",
+    "ngl you seem like you'd be fun to grab coffee with ☕"
+  ];
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function personalize(template, profile){
+    const kw = pick(profile.keywords);
+    return template.replace(/\{kw\}/g, kw);
+  }
+
+  /* ============ STATE ============ */
+  let deck = [...PROFILES];
+  let matches = [];      // profiles matched with
+  let conversations = {}; // id -> {messages:[{from,text}], lastMsg}
+  let activeConvoId = null;
+  let isDragging = false;
+  let startX = 0, startY = 0, currentX = 0, currentY = 0, activeCard = null;
+
+  /* ============ ELEMENTS ============ */
+  const cardStack = document.getElementById('card-stack');
+  const emptyState = document.getElementById('empty-state');
+  const actionRow = document.getElementById('action-row');
+  const matchModal = document.getElementById('match-modal');
+  const matchesGrid = document.getElementById('matches-grid');
+  const matchesEmpty = document.getElementById('matches-empty');
+  const chatList = document.getElementById('chat-list');
+  const chatListEmpty = document.getElementById('chat-list-empty');
+  const matchesBadge = document.getElementById('matches-badge');
+  const chatBadge = document.getElementById('chat-badge');
+
+  /* ============ NAVIGATION ============ */
+  const screens = {
+    discover: document.getElementById('screen-discover'),
+    matches: document.getElementById('screen-matches'),
+    'chat-list': document.getElementById('screen-chat-list'),
+    'chat-convo': document.getElementById('screen-chat-convo'),
+  };
+  const navBtns = document.querySelectorAll('.nav-btn');
+
+  function showScreen(name, opts){
+    opts = opts || {};
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    screens[name].style.display = 'flex';
+
+    // sync bottom nav highlight (chat-convo highlights "chat-list" tab)
+    const navTarget = (name === 'chat-convo') ? 'chat-list' : name;
+    navBtns.forEach(b => {
+      b.classList.toggle('active-nav', b.dataset.nav === navTarget);
+    });
+
+    if(name === 'matches') renderMatches();
+    if(name === 'chat-list') renderChatList();
+  }
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.nav));
+  });
+
+  document.getElementById('chat-back-btn').addEventListener('click', () => showScreen('chat-list'));
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    alert("Settings panel coming soon ✨");
+  });
+
+  /* ============ CARD DECK RENDERING ============ */
+  function renderDeck(){
+    cardStack.innerHTML = '';
+    if(deck.length === 0){
+      emptyState.classList.remove('hidden');
+      emptyState.style.display = 'flex';
+      actionRow.style.visibility = 'hidden';
+      return;
+    }
+    emptyState.classList.add('hidden');
+    emptyState.style.display = 'none';
+    actionRow.style.visibility = 'visible';
+
+    // render up to 3 stacked cards, topmost last in DOM (on top)
+    const visible = deck.slice(0, 3).reverse();
+    visible.forEach((profile, idx) => {
+      const posFromTop = visible.length - 1 - idx; // 0 = top card
+      const card = buildCard(profile, posFromTop);
+      cardStack.appendChild(card);
+    });
+  }
+
+  function buildCard(profile, posFromTop){
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+    card.dataset.id = profile.id;
+
+    const scale = 1 - posFromTop * 0.045;
+    const translateY = posFromTop * 14;
+    card.style.transform = `translateY(${translateY}px) scale(${scale})`;
+    card.style.zIndex = 10 - posFromTop;
+    card.style.opacity = posFromTop === 2 ? '0.6' : '1';
+
+    card.innerHTML = `
+      <img src="${profile.img}" alt="${profile.name}" draggable="false">
+      <div class="card-gradient"></div>
+      <div class="card-stamp stamp-like">LIKE</div>
+      <div class="card-stamp stamp-nope">NOPE</div>
+      <div class="absolute bottom-0 left-0 right-0 p-5 text-white">
+        <div class="flex items-baseline gap-2 mb-1.5">
+          <h2 class="font-display font-bold text-2xl">${profile.name}</h2>
+          <span class="font-display text-xl opacity-90">${profile.age}</span>
+        </div>
+        <div class="flex items-center gap-1.5 mb-2.5 text-sm opacity-80">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${profile.distance}
+        </div>
+        <p class="text-sm leading-snug opacity-95 mb-3">${profile.bio}</p>
+        <div class="flex flex-wrap gap-1.5">
+          ${profile.tags.map(t => `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background:rgba(255,255,255,0.18)">${t}</span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    if(posFromTop === 0){
+      attachDragHandlers(card, profile);
+    }
+    return card;
+  }
+
+  /* ============ DRAG / SWIPE LOGIC ============ */
+  function attachDragHandlers(card, profile){
+    card.addEventListener('pointerdown', onDown);
+
+    function onDown(e){
+      isDragging = true;
+      activeCard = card;
+      startX = e.clientX; startY = e.clientY;
+      currentX = 0; currentY = 0;
+      card.style.transition = 'none';
+      card.setPointerCapture && card.setPointerCapture(e.pointerId);
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    }
+
+    function onMove(e){
+      if(!isDragging) return;
+      currentX = e.clientX - startX;
+      currentY = e.clientY - startY;
+      const rot = currentX * 0.06;
+      card.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${rot}deg)`;
+
+      const likeStamp = card.querySelector('.stamp-like');
+      const nopeStamp = card.querySelector('.stamp-nope');
+      const intensity = Math.min(Math.abs(currentX)/100, 1);
+      if(currentX > 20){
+        likeStamp.style.opacity = intensity;
+        nopeStamp.style.opacity = 0;
+      } else if(currentX < -20){
+        nopeStamp.style.opacity = intensity;
+        likeStamp.style.opacity = 0;
+      } else {
+        likeStamp.style.opacity = 0;
+        nopeStamp.style.opacity = 0;
+      }
+    }
+
+    function onUp(){
+      if(!isDragging) return;
+      isDragging = false;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      card.style.transition = '';
+
+      const threshold = 100;
+      if(currentX > threshold){
+        swipeCardOut(card, profile, 'like');
+      } else if(currentX < -threshold){
+        swipeCardOut(card, profile, 'nope');
+      } else {
+        card.style.transform = '';
+        card.querySelector('.stamp-like').style.opacity = 0;
+        card.querySelector('.stamp-nope').style.opacity = 0;
+      }
+    }
+  }
+
+  function swipeCardOut(card, profile, direction){
+    const flyX = direction === 'like' ? 650 : -650;
+    const rot = direction === 'like' ? 30 : -30;
+    card.style.transform = `translate(${flyX}px, ${currentY - 40}px) rotate(${rot}deg)`;
+    card.style.opacity = '0';
+
+    setTimeout(() => {
+      deck.shift(); // remove top card from deck
+      finalizeSwipe(profile, direction);
+      renderDeck();
+    }, 380);
+  }
+
+  function finalizeSwipe(profile, direction){
+    if(direction === 'like'){
+      const isMatch = Math.random() < 0.5;
+      if(isMatch){
+        registerMatch(profile);
+        setTimeout(() => triggerMatchModal(profile), 80);
+      }
+    }
+  }
+
+  /* Button-triggered swipe (no drag) */
+  function programmaticSwipe(direction){
+    if(deck.length === 0) return;
+    const topCard = cardStack.querySelector('.profile-card:last-child');
+    const profile = deck[0];
+    if(!topCard) return;
+    currentY = -10;
+    swipeCardOut(topCard, profile, direction);
+  }
+
+  document.getElementById('btn-like').addEventListener('click', () => programmaticSwipe('like'));
+  document.getElementById('btn-nope').addEventListener('click', () => programmaticSwipe('nope'));
+  document.getElementById('btn-super').addEventListener('click', () => {
+    // Super like always matches
+    if(deck.length === 0) return;
+    const topCard = cardStack.querySelector('.profile-card:last-child');
+    const profile = deck[0];
+    currentY = -10;
+    const flyX = 0;
+    topCard.style.transform = `translate(0px, -700px) scale(1.05) rotate(0deg)`;
+    topCard.style.opacity = '0';
+    setTimeout(() => {
+      deck.shift();
+      registerMatch(profile);
+      renderDeck();
+      setTimeout(() => triggerMatchModal(profile), 80);
+    }, 380);
+  });
+
+  document.getElementById('reset-deck-btn').addEventListener('click', () => {
+    deck = [...PROFILES];
+    renderDeck();
+  });
+
+  /* ============ MATCH LOGIC ============ */
+  function registerMatch(profile){
+    if(!matches.find(m => m.id === profile.id)){
+      matches.push(profile);
+      updateBadges();
+    }
+  }
+
+  function triggerMatchModal(profile){
+    document.getElementById('match-photo-them').src = profile.img;
+    document.getElementById('match-text').textContent = `You and ${profile.name} liked each other. Don't leave them on read.`;
+    matchModal.dataset.profileId = profile.id;
+    launchConfetti();
+    matchModal.classList.add('show');
+  }
+
+  function launchConfetti(){
+    const layer = document.getElementById('confetti-layer');
+    layer.innerHTML = '';
+    const colors = ['#FF5470','#FFB800','#2ECC71','#FFF8F0'];
+    for(let i=0; i<46; i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti';
+      const size = 6 + Math.random()*6;
+      piece.style.width = size+'px';
+      piece.style.height = (size*0.4)+'px';
+      piece.style.left = Math.random()*100+'%';
+      piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.animationDuration = (1.8 + Math.random()*1.4)+'s';
+      piece.style.animationDelay = (Math.random()*0.4)+'s';
+      layer.appendChild(piece);
+    }
+  }
+
+  document.getElementById('keep-swiping-btn').addEventListener('click', () => {
+    matchModal.classList.remove('show');
+  });
+
+  document.getElementById('start-convo-btn').addEventListener('click', () => {
+    const id = Number(matchModal.dataset.profileId);
+    matchModal.classList.remove('show');
+    openConversation(id, {seedOpener:true});
+  });
+
+  /* ============ MATCHES GRID ============ */
+  function renderMatches(){
+    matchesGrid.innerHTML = '';
+    if(matches.length === 0){
+      matchesEmpty.classList.remove('hidden');
+      matchesEmpty.style.display = 'flex';
+      return;
+    }
+    matchesEmpty.classList.add('hidden');
+    matchesEmpty.style.display = 'none';
+
+    matches.forEach(p => {
+      const card = document.createElement('button');
+      card.className = 'relative rounded-2xl overflow-hidden aspect-[3/4] text-left active:scale-[0.97] transition';
+      card.style.boxShadow = '0 6px 16px -4px rgba(26,22,37,0.18)';
+      card.innerHTML = `
+        <img src="${p.img}" class="absolute inset-0 w-full h-full object-cover" alt="${p.name}">
+        <div class="absolute inset-0" style="background:linear-gradient(to top, rgba(10,8,15,0.85), rgba(10,8,15,0) 55%)"></div>
+        <div class="absolute bottom-0 left-0 right-0 p-3 text-white">
+          <p class="font-display font-bold text-sm">${p.name}, ${p.age}</p>
+          <p class="text-[11px] opacity-75">${conversations[p.id] ? 'Tap to chat' : 'New match'}</p>
+        </div>
+        ${!conversations[p.id] ? `<span class="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full" style="background:var(--gold)"></span>` : ''}
+      `;
+      card.addEventListener('click', () => openConversation(p.id, {seedOpener:true}));
+      matchesGrid.appendChild(card);
+    });
+  }
+
+  /* ============ CHAT LIST ============ */
+  function renderChatList(){
+    chatList.innerHTML = '';
+    const ids = Object.keys(conversations);
+    if(ids.length === 0){
+      chatListEmpty.classList.remove('hidden');
+      chatListEmpty.style.display = 'flex';
+      return;
+    }
+    chatListEmpty.classList.add('hidden');
+    chatListEmpty.style.display = 'none';
+
+    ids.sort((a,b) => (conversations[b].lastTimestamp||0) - (conversations[a].lastTimestamp||0));
+
+    ids.forEach(id => {
+      const profile = PROFILES.find(p => p.id === Number(id));
+      const convo = conversations[id];
+      const lastMsg = convo.messages[convo.messages.length - 1];
+      const row = document.createElement('button');
+      row.className = 'w-full flex items-center gap-3.5 py-3 active:bg-black/[0.03] rounded-xl px-1 transition text-left';
+      row.innerHTML = `
+        <img src="${profile.img}" class="w-14 h-14 rounded-full object-cover shrink-0" alt="${profile.name}">
+        <div class="flex-1 min-w-0 border-b border-black/5 pb-3 -mb-3">
+          <div class="flex items-center justify-between mb-0.5">
+            <p class="font-display font-semibold text-sm" style="color:var(--ink)">${profile.name}</p>
+            ${convo.typing ? '' : `<span class="text-[11px] text-gray-400">now</span>`}
+          </div>
+          <p class="text-xs text-gray-500 truncate pr-2">${convo.typing ? 'typing…' : (lastMsg ? (lastMsg.from === 'me' ? 'You: ' : '') + lastMsg.text : '')}</p>
+        </div>
+      `;
+      row.addEventListener('click', () => openConversation(Number(id)));
+      chatList.appendChild(row);
+    });
+  }
+
+
+  /* ============ CONVERSATION ============ */
+  function openConversation(id, opts){
+    opts = opts || {};
+    const profile = PROFILES.find(p => p.id === id);
+    if(!profile) return;
+    activeConvoId = id;
+
+    if(!conversations[id]){
+      conversations[id] = { messages: [], lastTimestamp: Date.now(), typing:false };
+    }
+
+    document.getElementById('convo-avatar').src = profile.img;
+    document.getElementById('convo-name').textContent = profile.name;
+
+    showScreen('chat-convo');
+    renderConvoMessages();
+
+    if(opts.seedOpener && conversations[id].messages.length === 0){
+      conversations[id].typing = true;
+      renderConvoMessages();
+      setTimeout(() => {
+        conversations[id].typing = false;
+        const opener = personalize(pick(OPENER_TEMPLATES), profile);
+        addMessage(id, 'them', opener);
+      }, 1300);
+    }
+  }
+
+  function renderConvoMessages(){
+    const box = document.getElementById('convo-messages');
+    const convo = conversations[activeConvoId];
+    box.innerHTML = '';
+    if(!convo) return;
+
+    convo.messages.forEach(m => {
+      box.appendChild(buildBubble(m.from, m.text));
+    });
+
+    if(convo.typing){
+      const typingEl = document.createElement('div');
+      typingEl.className = 'flex justify-start';
+      typingEl.innerHTML = `<div class="bubble-them px-4 py-3 flex items-center gap-1.5"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+      box.appendChild(typingEl);
+    }
+
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function buildBubble(from, text){
+    const wrap = document.createElement('div');
+    wrap.className = `flex ${from === 'me' ? 'justify-end' : 'justify-start'}`;
+    const bubbleClass = from === 'me' ? 'bubble-me' : 'bubble-them';
+    wrap.innerHTML = `<div class="${bubbleClass} px-4 py-2.5 text-sm max-w-[75%] leading-snug">${escapeHtml(text)}</div>`;
+    return wrap;
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function addMessage(id, from, text){
+    const convo = conversations[id];
+    convo.messages.push({from, text});
+    convo.lastTimestamp = Date.now();
+    if(activeConvoId === id){
+      renderConvoMessages();
+    }
+    updateBadges();
+  }
+
+  /* Sending a message */
+  function sendCurrentMessage(){
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if(!text || activeConvoId === null) return;
+    const id = activeConvoId;
+    addMessage(id, 'me', text);
+    input.value = '';
+
+    const profile = PROFILES.find(p => p.id === id);
+    conversations[id].typing = true;
+    renderConvoMessages();
+
+    setTimeout(() => {
+      if(!conversations[id]) return;
+      conversations[id].typing = false;
+      const reply = personalize(pick(REPLY_TEMPLATES), profile);
+      addMessage(id, 'them', reply);
+    }, 1500);
+  }
+
+  document.getElementById('chat-send-btn').addEventListener('click', sendCurrentMessage);
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') sendCurrentMessage();
+  });
+
+  /* ============ BADGES ============ */
+  function updateBadges(){
+    const newMatchCount = matches.filter(m => !conversations[m.id]).length;
+    if(newMatchCount > 0){
+      matchesBadge.textContent = newMatchCount;
+      matchesBadge.classList.remove('hidden');
+    } else {
+      matchesBadge.classList.add('hidden');
+    }
+
+    // unread = conversations where last message is from "them" and chat-list/convo not currently focused on it... 
+    // Simplify: show count of conversations with at least one message from "them" as a no-op badge once visited.
+    const activeChats = Object.keys(conversations).length;
+    if(activeChats > 0){
+      chatBadge.classList.add('hidden'); // keep UI calm; matches badge carries the "new" signal
+    }
+  }
+
+  /* ============ INIT ============ */
+  renderDeck();
+})();
+</script>
+</body>
+</html>
